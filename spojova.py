@@ -58,12 +58,16 @@ def nacti_poslednich_20():
     zaznamy = []
 
     for row in ws.iter_rows(min_row=2, values_only=True):
-        # vynechat řádky, které nemají všechny tři hodnoty
-        if row is None or len(row) < 3:
+        # vynech prázdné řádky
+        if not row or not any(row):
             continue
-        radek, odpoved, cas = row
+        # vezmeme jen první tři hodnoty, zbytek ignorujeme
+        radek, odpoved, cas, *rest = row + (None,)*(3-len(row))
         if radek and odpoved and cas:
             zaznamy.append(f"[{cas}] {radek} → {odpoved}")
+
+    return list(reversed(zaznamy[-20:]))
+
 
     return list(reversed(zaznamy[-20:]))
 
