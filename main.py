@@ -1,41 +1,33 @@
-import tkinter as tk
-from tkinter import ttk
-
+import streamlit as st
 from spojova import Aplikace as SpojovaApp
 from technicka import Aplikace as TechnickaApp
 from strojni import Aplikace as StrojniApp
-from manager import Manager  # import třídy Manager
+from manager import Manager
 
-root = tk.Tk()
-root.title("Hlášení závad")
 
-# maximalizace okna
-try:
-    root.state('zoomed')        # Windows
-except:
-    root.attributes('-zoomed', True)  # Linux/Mac
+# Hlavní nadpis
+st.set_page_config(page_title="Hlášení závad", layout="wide")
+st.title("Hlášení závad")
 
-# notebook
-notebook = ttk.Notebook(root)
-notebook.pack(fill='both', expand=True)
+# Záložky místo Tkinter notebooku
+tabs = st.tabs(["Spojová služba", "Technická služba", "Strojní služba", "Manager"])
 
-# panely
-frame_spojova = tk.Frame(notebook)
-frame_technicka = tk.Frame(notebook)
-frame_strojni = tk.Frame(notebook)
-frame_manager = tk.Frame(notebook)  # nový frame pro manager
+# --- SPOJOVÁ SLUŽBA ---
+with tabs[0]:
+    st.subheader("Spojová služba")
+    SpojovaApp(st)
 
-# přidání záložek
-notebook.add(frame_spojova, text="Spojová služba")
-notebook.add(frame_technicka, text="Technická služba")
-notebook.add(frame_strojni, text="Strojní služba")
-notebook.add(frame_manager, text="Manager")  # nová záložka
+# --- TECHNICKÁ SLUŽBA ---
+with tabs[1]:
+    st.subheader("Technická služba")
+    TechnickaApp(st)
 
-# vložení aplikací do jednotlivých záložek
-app_spojova = SpojovaApp(frame_spojova)
-app_technicka = TechnickaApp(frame_technicka)
-app_strojni = StrojniApp(frame_strojni)
-app_manager = Manager(frame_manager)  # Manager v nové záložce
+# --- STROJNÍ SLUŽBA ---
+with tabs[2]:
+    st.subheader("Strojní služba")
+    StrojniApp(st)
 
-root.mainloop()
-
+# --- MANAGER ---
+with tabs[3]:
+    st.subheader("Manager")
+    Manager(st)
