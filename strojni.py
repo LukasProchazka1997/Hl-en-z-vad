@@ -22,7 +22,7 @@ def nacti_csv(soubor):
         reader = csv.reader(f)
         return [row[0] for row in reader if row]
 
-def spojova_app():
+def strojn_app():
     st.write("### Hlášení pro Strojní službu")
 
     radky = nacti_csv(CSV_FILE)
