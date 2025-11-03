@@ -14,9 +14,11 @@ PASSWORD = "1234"
 def nacti_json(file_path):
     if not os.path.exists(file_path):
         return []
+    if os.path.getsize(file_path) == 0:  # prázdný soubor
+        return []
     with open(file_path, "r", encoding="utf-8") as f:
         return json.load(f)
-
+        
 def uloz_json(file_path, data):
     with open(file_path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
