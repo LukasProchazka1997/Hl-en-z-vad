@@ -1,67 +1,68 @@
+# manager.py
 import streamlit as st
+import csv
 import os
-import json
+from streamlit_sortable import sortable_list  # pip install streamlit-sortable
 
 # --- Nastavení ---
 CSV_FILES = {
     "Spojová služba": "spojova.csv",
     "Technická služba": "technicka.csv",
-    "Strojní služba": "strojni.csv",
-    "Jména": "jmena.csv"
+    "Strojní služba": "strojni.csv"
 }
-PASSWORD = "1234"
+PASSWORD = "tajneheslo"  # změň na svoje
 
-def nacti_json(file_path):
-    if not os.path.exists(file_path):
+# --- Pomocné funkce ---
+def nacti_csv(soubor):
+    if not os.path.exists(soubor):
+        with open(soubor, "w", newline="", encoding="utf-8") as f:
+            pass
         return []
-    if os.path.getsize(file_path) == 0:  # prázdný soubor
-        return []
-    with open(file_path, "r", encoding="utf-8") as f:
-        return json.load(f)
-        
-def uloz_json(file_path, data):
-    with open(file_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    with open(soubor, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        return [row[0] for row in reader if row]
 
+def uloz_csv(soubor, data):
+    data = sorted(data)  # abecední řazení
+    with open(soubor, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        for item in data:
+            writer.writerow([item])
+
+# --- Hlavní aplikace ---
 def manager_app():
-    st.subheader("Manager – přístup vyžaduje heslo")
-    heslo = st.text_input("Zadejte heslo", type="password")
-    if heslo != PASSWORD:
-        st.warning("Špatné heslo nebo nezadáno.")
+    st.subheader("Manager – Správa položek")
+    
+    # --- Heslo ---
+    if "authorized" not in st.session_state:
+        st.session_state.authorized = False
+    
+    if not st.session_state.authorized:
+        pw = st.text_input("Zadejte heslo", type="password")
+        if st.button("Potvrdit"):
+            if pw == PASSWORD:
+                st.session_state.authorized = True
+                st.experimental_rerun()
+            else:
+                st.error("Špatné heslo")
         return
 
-    st.success("Přístup povolen!")
-
-    # --- Vyber služby ---
+    # --- Výběr služby ---
     service = st.selectbox("Vyber službu", list(CSV_FILES.keys()))
-
     file_path = CSV_FILES[service]
+    data = nacti_csv(file_path)
 
-    # --- Načtení dat ---
-    data = nacti_json(file_path)
+    # --- Drag & drop seznam ---
+    st.write("Přetáhněte položky pro změnu pořadí (automaticky abecedně při uložení)")
+    new_order = sortable_list(data, key=f"{service}_sortable")
 
-    st.markdown("### Položky (abecedně seřazeno)")
-    data.sort()
-    
-    # --- Zobrazení a editace položek ---
-    upravene = data.copy()
-    for i, item in enumerate(data):
-        cols = st.columns([0.7, 0.1, 0.1])
-        with cols[0]:
-            upravene[i] = st.text_input(f"Položka {i+1}", value=item, key=f"{service}_{i}")
-        with cols[1]:
-            if st.button("↑", key=f"{service}_up_{i}") and i > 0:
-                upravene[i-1], upravene[i] = upravene[i], upravene[i-1]
-        with cols[2]:
-            if st.button("↓", key=f"{service}_down_{i}") and i < len(upravene)-1:
-                upravene[i+1], upravene[i] = upravene[i], upravene[i+1]
-
-    st.markdown("---")
+    # --- Přidání nové položky ---
     nova = st.text_input("Přidat novou položku", key=f"{service}_nova")
+
     if st.button("Uložit změny"):
+        upravene = new_order.copy()
         if nova.strip():
             upravene.append(nova.strip())
-        upravene = sorted(upravene)  # abecední řazení
-        uloz_json(file_path, upravene)
-        st.success(f"Položky pro {service} byly uloženy.")
-        st.experimental_rerun()  # refresh stránky
+        uloz_csv(file_path, upravene)
+        st.success(f"Položky pro {service} byly uloženy a seřazeny abecedně.")
+        st.experimental_rerun()
