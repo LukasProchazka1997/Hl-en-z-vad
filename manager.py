@@ -1,5 +1,4 @@
-import tkinter as tk
-from tkinter import messagebox, simpledialog
+import streamlit as st
 import csv
 import os
 
@@ -11,164 +10,81 @@ SERVICE_FILES = {
 
 HESLO = "1234"
 
-class Manager:
-    def __init__(self, parent):
-        self.parent = parent
-        self.data = []
-        self.drag_index = None
-        self.current_file = None
+# --- session state pro uchování seznamu ---
+if 'manager_data' not in st.session_state:
+    st.session_state.manager_data = []
+if 'manager_file' not in st.session_state:
+    st.session_state.manager_file = None
 
-        # --- UI ---
-        top_frame = tk.Frame(parent)
-        top_frame.pack(fill="x", pady=5)
+# --- vyber služby ---
+service = st.selectbox("Vyber službu", list(SERVICE_FILES.keys()))
 
-        tk.Label(top_frame, text="Vyber službu:").pack(side="left", padx=5)
-        self.service_var = tk.StringVar(value="Spojová služba")
-        self.service_menu = tk.OptionMenu(top_frame, self.service_var, *SERVICE_FILES.keys(), command=self.load_service)
-        self.service_menu.pack(side="left")
+# --- načtení CSV ---
+if st.session_state.manager_file != SERVICE_FILES[service]:
+    st.session_state.manager_file = SERVICE_FILES[service]
+    st.session_state.manager_data.clear()
+    if os.path.exists(st.session_state.manager_file):
+        with open(st.session_state.manager_file, newline="", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                if row:
+                    st.session_state.manager_data.append(row[0])
 
-        # Listbox + scrollbar
-        outer = tk.Frame(parent)
-        outer.pack(fill="both", expand=True)
-        self.listbox = tk.Listbox(outer, activestyle="dotbox")
-        self.listbox.pack(side="left", fill="both", expand=True, padx=10, pady=10)
-        scrollbar = tk.Scrollbar(outer, command=self.listbox.yview)
-        scrollbar.pack(side="right", fill="y", pady=10)
-        self.listbox.config(yscrollcommand=scrollbar.set)
+st.subheader(f"Položky služby: {service}")
 
-        self.listbox.bind('<Button-1>', self.on_click)
-        self.listbox.bind('<B1-Motion>', self.on_drag)
-        self.listbox.bind('<ButtonRelease-1>', self.on_drop)
-        self.listbox.bind('<Double-Button-1>', lambda e: self.edit_item())
+# --- výběr položky ---
+selected_idx = st.selectbox(
+    "Vyber položku", 
+    options=list(range(len(st.session_state.manager_data))),
+    format_func=lambda i: st.session_state.manager_data[i] if i < len(st.session_state.manager_data) else ""
+) if st.session_state.manager_data else None
 
-        # tlačítka
-        btn_frame = tk.Frame(parent)
-        btn_frame.pack(pady=6)
-        tk.Button(btn_frame, text="Přidat", command=self.add_item).grid(row=0, column=0, padx=5)
-        tk.Button(btn_frame, text="Upravit", command=self.edit_item).grid(row=0, column=1, padx=5)
-        tk.Button(btn_frame, text="Smazat", command=self.delete_item).grid(row=0, column=2, padx=5)
-        tk.Button(btn_frame, text="Nahoru", command=self.move_up).grid(row=0, column=3, padx=5)
-        tk.Button(btn_frame, text="Dolů", command=self.move_down).grid(row=0, column=4, padx=5)
-        tk.Button(btn_frame, text="Uložit (heslo)", command=self.save_csv).grid(row=0, column=5, padx=5)
+# --- CRUD operace ---
+col1, col2, col3, col4, col5 = st.columns(5)
 
-        # načtení defaultní služby
-        self.load_service(self.service_var.get())
+with col1:
+    new_item = st.text_input("Nová položka")
+    if st.button("Přidat"):
+        if new_item.strip():
+            st.session_state.manager_data.append(new_item.strip())
+            st.experimental_rerun()
 
-    # --- načítání služby ---
-    def load_service(self, service_name):
-        self.current_file = SERVICE_FILES[service_name]
-        self.data.clear()
-        self.listbox.delete(0, tk.END)
-        if os.path.exists(self.current_file):
-            with open(self.current_file, newline='', encoding="utf-8") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if row:
-                        self.data.append(row[0])
-                        self.listbox.insert(tk.END, row[0])
+with col2:
+    if selected_idx is not None:
+        edit_val = st.text_input("Upravit položku", st.session_state.manager_data[selected_idx])
+        if st.button("Upravit"):
+            if edit_val.strip():
+                st.session_state.manager_data[selected_idx] = edit_val.strip()
+                st.experimental_rerun()
 
-    # --- CRUD operace ---
-    def add_item(self):
-        val = simpledialog.askstring("Nová položka", "Zadej novou položku", parent=self.parent)
-        if val:
-            self.data.append(val)
-            self.listbox.insert(tk.END, val)
+with col3:
+    if selected_idx is not None and st.button("Smazat"):
+        st.session_state.manager_data.pop(selected_idx)
+        st.experimental_rerun()
 
-    def edit_item(self):
-        sel = self.listbox.curselection()
-        if not sel:
-            messagebox.showwarning("Varování", "Vyber položku k úpravě")
-            return
-        i = sel[0]
-        val = simpledialog.askstring("Upravit položku", "Nová hodnota", initialvalue=self.data[i], parent=self.parent)
-        if val:
-            self.data[i] = val
-            self.listbox.delete(i)
-            self.listbox.insert(i, val)
+with col4:
+    if selected_idx is not None and st.button("Nahoru"):
+        if selected_idx > 0:
+            st.session_state.manager_data[selected_idx-1], st.session_state.manager_data[selected_idx] = \
+                st.session_state.manager_data[selected_idx], st.session_state.manager_data[selected_idx-1]
+            st.experimental_rerun()
 
-    def delete_item(self):
-        sel = self.listbox.curselection()
-        if not sel:
-            messagebox.showwarning("Varování", "Vyber položku ke smazání")
-            return
-        i = sel[0]
-        del self.data[i]
-        self.listbox.delete(i)
+with col5:
+    if selected_idx is not None and st.button("Dolů"):
+        if selected_idx < len(st.session_state.manager_data) - 1:
+            st.session_state.manager_data[selected_idx+1], st.session_state.manager_data[selected_idx] = \
+                st.session_state.manager_data[selected_idx], st.session_state.manager_data[selected_idx+1]
+            st.experimental_rerun()
 
-    # --- přesouvání ---
-    def move_up(self):
-        sel = self.listbox.curselection()
-        if not sel: return
-        i = sel[0]
-        if i == 0: return
-        self.data[i-1], self.data[i] = self.data[i], self.data[i-1]
-        self.refresh_listbox()
-        self.listbox.selection_set(i-1)
-
-    def move_down(self):
-        sel = self.listbox.curselection()
-        if not sel: return
-        i = sel[0]
-        if i == len(self.data)-1: return
-        self.data[i+1], self.data[i] = self.data[i], self.data[i+1]
-        self.refresh_listbox()
-        self.listbox.selection_set(i+1)
-
-    # --- drag & drop ---
-    def on_click(self, event):
-        idx = self.listbox.nearest(event.y)
-        if 0 <= idx < len(self.data):
-            self.drag_index = idx
-            self.listbox.selection_clear(0, tk.END)
-            self.listbox.selection_set(idx)
-
-    def on_drag(self, event):
-        if self.drag_index is None: return
-        idx = self.listbox.nearest(event.y)
-        if 0 <= idx < len(self.data):
-            self.listbox.selection_clear(0, tk.END)
-            self.listbox.selection_set(idx)
-
-    def on_drop(self, event):
-        if self.drag_index is None: return
-        target = self.listbox.nearest(event.y)
-        if target < 0: target = 0
-        if target >= len(self.data): target = len(self.data)-1
-        start = self.drag_index
-        if target == start: 
-            self.drag_index = None
-            return
-        item = self.data.pop(start)
-        if target > start: target -= 1
-        self.data.insert(target, item)
-        self.refresh_listbox()
-        self.listbox.selection_clear(0, tk.END)
-        self.listbox.selection_set(target)
-        self.drag_index = None
-
-    def refresh_listbox(self):
-        self.listbox.delete(0, tk.END)
-        for i in self.data:
-            self.listbox.insert(tk.END, i)
-
-    # --- uložení s heslem ---
-    def save_csv(self):
-        pwd = simpledialog.askstring("Heslo", "Zadej heslo pro uložení", show="*", parent=self.parent)
-        if pwd != HESLO:
-            messagebox.showerror("Chyba", "Špatné heslo!")
-            return
-        if not self.current_file:
-            messagebox.showerror("Chyba", "Žádný soubor není vybraný")
-            return
-        with open(self.current_file, "w", newline="", encoding="utf-8") as f:
+# --- uložení s heslem ---
+st.write("---")
+pwd = st.text_input("Heslo pro uložení změn", type="password")
+if st.button("Uložit CSV"):
+    if pwd != HESLO:
+        st.error("Špatné heslo!")
+    else:
+        with open(st.session_state.manager_file, "w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            for item in self.data:
+            for item in st.session_state.manager_data:
                 writer.writerow([item])
-        messagebox.showinfo("Uloženo", f"Soubor {self.current_file} byl uložen")
-
-# --- demo ---
-if __name__ == "__main__":
-    root = tk.Tk()
-    root.title("Manager – demo")
-    Manager(root)
-    root.mainloop()
+        st.success(f"Soubor {st.session_state.manager_file} byl uložen!")
