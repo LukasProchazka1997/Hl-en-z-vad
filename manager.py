@@ -10,7 +10,7 @@ CSV_FILES = {
     "Jména": "jmena.csv"
 }
 
-MANAGER_PASSWORD = "tajneheslo"  # ← sem dej své heslo
+MANAGER_PASSWORD = "2"
 
 
 # --- Pomocné funkce ---
