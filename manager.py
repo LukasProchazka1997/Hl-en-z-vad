@@ -1,88 +1,93 @@
-# manager.py
+# manager.py — Streamlit Manager
 import streamlit as st
 import csv
 import os
 
-SERVICE_FILES = {
+# --- konfigurace ---
+CSV_FILES = {
     "Spojová služba": "spojova.csv",
     "Technická služba": "technicka.csv",
     "Strojní služba": "strojni.csv"
 }
 
-HESLO = "1234"
+MANAGER_PASSWORD = "1234"
 
+# --- pomocné funkce ---
+def load_csv(file_path):
+    if not os.path.exists(file_path):
+        return []
+    with open(file_path, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        return [row[0] for row in reader if row]
+
+def save_csv(file_path, data):
+    with open(file_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        for item in sorted(data):  # vždy ukládáme seřazeně
+            writer.writerow([item])
+
+# --- hlavní aplikace ---
 def manager_app():
-    # --- session state ---
-    if 'manager_data' not in st.session_state:
-        st.session_state.manager_data = []
-    if 'manager_file' not in st.session_state:
-        st.session_state.manager_file = None
+    st.subheader("Manager CSV")
+    
+    # vyber služby
+    service = st.selectbox("Vyber službu", list(CSV_FILES.keys()))
+    file_path = CSV_FILES[service]
 
-    service = st.selectbox("Vyber službu", list(SERVICE_FILES.keys()))
+    # načteme data do session_state
+    if f"data_{service}" not in st.session_state:
+        st.session_state[f"data_{service}"] = load_csv(file_path)
+    
+    data = st.session_state[f"data_{service}"]
+    data.sort()  # vždy abecedně
 
-    # načtení CSV
-    if st.session_state.manager_file != SERVICE_FILES[service]:
-        st.session_state.manager_file = SERVICE_FILES[service]
-        st.session_state.manager_data.clear()
-        if os.path.exists(st.session_state.manager_file):
-            with open(st.session_state.manager_file, newline="", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if row:
-                        st.session_state.manager_data.append(row[0])
+    # heslo pro úpravy
+    if "auth_pass" not in st.session_state:
+        st.session_state.auth_pass = ""
 
-    st.subheader(f"Položky služby: {service}")
+    st.text("Pro úpravy zadejte heslo")
+    password = st.text_input("Heslo", type="password")
 
-    selected_idx = st.selectbox(
-        "Vyber položku",
-        options=list(range(len(st.session_state.manager_data))),
-        format_func=lambda i: st.session_state.manager_data[i] if i < len(st.session_state.manager_data) else ""
-    ) if st.session_state.manager_data else None
+    # --- seznam položek ---
+    st.write("### Položky")
+    st.write("\n".join(data) if data else "*Žádné položky*")
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    # pokud je heslo správné, umožníme CRUD
+    if password == MANAGER_PASSWORD:
+        st.session_state.auth_pass = password
 
-    with col1:
-        new_item = st.text_input("Nová položka")
+        # --- přidat položku ---
+        new_item = st.text_input("Nová položka", "")
         if st.button("Přidat"):
             if new_item.strip():
-                st.session_state.manager_data.append(new_item.strip())
-                st.experimental_rerun()
-
-    with col2:
-        if selected_idx is not None:
-            edit_val = st.text_input("Upravit položku", st.session_state.manager_data[selected_idx])
-            if st.button("Upravit"):
-                if edit_val.strip():
-                    st.session_state.manager_data[selected_idx] = edit_val.strip()
-                    st.experimental_rerun()
-
-    with col3:
-        if selected_idx is not None and st.button("Smazat"):
-            st.session_state.manager_data.pop(selected_idx)
+                if new_item.strip() not in data:
+                    data.append(new_item.strip())
+                    save_csv(file_path, data)
+                    st.success(f"Položka '{new_item.strip()}' přidána")
+                else:
+                    st.warning("Tato položka již existuje")
             st.experimental_rerun()
 
-    with col4:
-        if selected_idx is not None and st.button("Nahoru"):
-            if selected_idx > 0:
-                st.session_state.manager_data[selected_idx-1], st.session_state.manager_data[selected_idx] = \
-                    st.session_state.manager_data[selected_idx], st.session_state.manager_data[selected_idx-1]
+        # --- upravit položku ---
+        if data:
+            edit_item = st.selectbox("Vyber položku k úpravě", data)
+            new_value = st.text_input("Nová hodnota", "")
+            if st.button("Upravit"):
+                if new_value.strip():
+                    idx = data.index(edit_item)
+                    data[idx] = new_value.strip()
+                    save_csv(file_path, data)
+                    st.success(f"Položka '{edit_item}' byla upravena na '{new_value.strip()}'")
                 st.experimental_rerun()
 
-    with col5:
-        if selected_idx is not None and st.button("Dolů"):
-            if selected_idx < len(st.session_state.manager_data) - 1:
-                st.session_state.manager_data[selected_idx+1], st.session_state.manager_data[selected_idx] = \
-                    st.session_state.manager_data[selected_idx], st.session_state.manager_data[selected_idx+1]
+        # --- smazat položku ---
+        if data:
+            del_item = st.selectbox("Vyber položku k odstranění", data, key="del_select")
+            if st.button("Smazat"):
+                data.remove(del_item)
+                save_csv(file_path, data)
+                st.success(f"Položka '{del_item}' byla smazána")
                 st.experimental_rerun()
-
-    st.write("---")
-    pwd = st.text_input("Heslo pro uložení změn", type="password")
-    if st.button("Uložit CSV"):
-        if pwd != HESLO:
-            st.error("Špatné heslo!")
-        else:
-            with open(st.session_state.manager_file, "w", newline="", encoding="utf-8") as f:
-                writer = csv.writer(f)
-                for item in st.session_state.manager_data:
-                    writer.writerow([item])
-            st.success(f"Soubor {st.session_state.manager_file} byl uložen!")
+    else:
+        if password:
+            st.warning("Špatné heslo")
