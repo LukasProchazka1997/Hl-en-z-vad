@@ -56,12 +56,15 @@ def nacti_poslednich_20():
     wb = load_workbook(XLSX_FILE)
     ws = wb.active
     zaznamy = []
+
     for row in ws.iter_rows(min_row=2, values_only=True):
-        if not row or len(row) < 3:
+        # vynechat řádky, které nemají všechny tři hodnoty
+        if row is None or len(row) < 3:
             continue
         radek, odpoved, cas = row
         if radek and odpoved and cas:
             zaznamy.append(f"[{cas}] {radek} → {odpoved}")
+
     return list(reversed(zaznamy[-20:]))
 
 def spojova_app(key_prefix="spojova"):
