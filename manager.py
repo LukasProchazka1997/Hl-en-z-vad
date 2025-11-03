@@ -28,7 +28,6 @@ def save_csv(file_path, data):
 
 # --- hlavní aplikace ---
 def manager_app():
-    st.subheader("Manager CSV")
     
     # vyber služby
     service = st.selectbox("Vyber službu", list(CSV_FILES.keys()))
