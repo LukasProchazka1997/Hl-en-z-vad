@@ -50,8 +50,8 @@ def odesli_email(radek, odpoved, cas):
         server.login(EMAIL_USER, EMAIL_PASS)
         server.send_message(msg)
 
-def strojni_app(key_prefix="spojova"):
-    st.subheader("Spojová služba")
+def strojni_app(key_prefix="strojni"):
+    st.subheader("Strojní služba")
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
