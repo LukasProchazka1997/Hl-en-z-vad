@@ -31,7 +31,7 @@ def uloz_csv(file_path, data):
 
 # --- Hlavní aplikace ---
 def manager_app():
-    st.title("📋 Manager")
+    st.title("Manager")
 
     # --- Přihlášení ---
     if "manager_auth" not in st.session_state:
@@ -89,7 +89,7 @@ def manager_app():
                         st.rerun()
 
         nova = st.text_input("Přidat novou položku", key=f"{service}_nova")
-        if st.button("💾 Uložit změny", key=f"{service}_save"):
+        if st.button("Uložit změny", key=f"{service}_save"):
             if nova.strip():
                 data.append(nova.strip())
             uloz_csv(file_path, data)
