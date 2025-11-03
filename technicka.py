@@ -5,9 +5,9 @@ import os
 import smtplib
 from email.mime.text import MIMEText
 
-CSV_FILE = "spojova.csv"
+CSV_FILE = "technicka.csv"
 JMENA_FILE = "jmena.csv"
-XLSX_FILE = "vystupss.xlsx"
+XLSX_FILE = "vystupts.xlsx"
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -22,8 +22,8 @@ def nacti_csv(soubor):
         reader = csv.reader(f)
         return [row[0] for row in reader if row]
 
-def spojova_app():
-    st.write("### Hlášení pro Spojovou službu")
+def technicka_app():
+    st.write("### Hlášení pro Technickou službu")
 
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
