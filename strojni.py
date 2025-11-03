@@ -1,9 +1,10 @@
-# strojni.py
+
 import streamlit as st
+import csv
 from datetime import datetime
-import csv, os, smtplib
+import os
+import smtplib
 from email.mime.text import MIMEText
-from openpyxl import Workbook, load_workbook
 
 CSV_FILE = "strojni.csv"
 JMENA_FILE = "jmena.csv"
@@ -19,16 +20,17 @@ def nacti_csv(soubor):
     if not os.path.exists(soubor):
         return []
     with open(soubor, newline='', encoding="utf-8") as f:
-        return [row[0] for row in csv.reader(f) if row]
+        reader = csv.reader(f)
+        return [row[0] for row in reader if row]
 
-def strojni_app():
+def spojova_app():
     st.write("### Hlášení pro Strojní službu")
 
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
     if not radky:
-        st.warning("Soubor strojni.csv je prázdný nebo neexistuje")
+        st.warning("Soubor spojova.csv je prázdný nebo neexistuje")
         return
 
     vybrany_radek = st.selectbox("Vyber položku", radky)
@@ -39,11 +41,10 @@ def strojni_app():
         if not vybrane_jmeno or not popis:
             st.error("Je potřeba vybrat jméno a napsat popis.")
             return
-
         odpoved = f"{vybrane_jmeno} → {popis}"
         cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
         # Uložit do XLSX
+        from openpyxl import Workbook, load_workbook
         if os.path.exists(XLSX_FILE):
             wb = load_workbook(XLSX_FILE)
             ws = wb.active
