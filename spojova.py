@@ -50,6 +50,19 @@ def odesli_email(radek, odpoved, cas):
         server.login(EMAIL_USER, EMAIL_PASS)
         server.send_message(msg)
 
+def nacti_poslednich_20():
+    if not os.path.exists(XLSX_FILE):
+        return []
+    wb = load_workbook(XLSX_FILE)
+    ws = wb.active
+    zaznamy = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        radek, odpoved, cas = row
+        if radek and odpoved and cas:
+            zaznamy.append(f"[{cas}] {radek} → {odpoved}")
+    # posledních 20, nejnovější nahoře
+    return list(reversed(zaznamy[-20:]))
+
 def spojova_app(key_prefix="spojova"):
     st.subheader("Spojová služba")
     radky = nacti_csv(CSV_FILE)
@@ -70,3 +83,12 @@ def spojova_app(key_prefix="spojova"):
                 st.success(f"Hlášení bylo uloženo a odesláno ({cas})")
             except Exception as e:
                 st.error(f"Nastala chyba: {e}")
+
+    # Zobrazení posledních 20 hlášení
+    st.markdown("### Posledních 20 hlášení")
+    historie = nacti_poslednich_20()
+    if historie:
+        for z in historie:
+            st.text(z)
+    else:
+        st.text("Žádná hlášení ještě neexistují.")
