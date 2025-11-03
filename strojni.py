@@ -80,7 +80,7 @@ def odesli_email(radek, odpoved, cas, fotka=None):
 # --------------------
 # Hlavní Streamlit aplikace
 # --------------------
-def strojní_app(key_prefix="strojni"):
+def strojni_app(key_prefix="strojni"):
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
