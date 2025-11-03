@@ -3,7 +3,7 @@ import streamlit as st
 # Import Streamlit verze jednotlivých aplikací
 from spojova import spojova_app
 from technicka import technicka_app
-from strojni import strojni.py
+from strojni import strojni_app
 from manager import manager_app  # pokud máš Streamlit Manager verzi
 
 # Hlavní nadpis
