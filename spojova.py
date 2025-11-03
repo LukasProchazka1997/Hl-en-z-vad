@@ -1,7 +1,7 @@
 import streamlit as st
 import csv
+import json
 from datetime import datetime
-from openpyxl import Workbook, load_workbook
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -11,7 +11,7 @@ from email import encoders
 
 CSV_FILE = "spojova.csv"
 JMENA_FILE = "jmena.csv"
-XLSX_FILE = "vystupss.xlsx"
+JSON_FILE = "vystupss.json"
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -29,32 +29,29 @@ def nacti_csv(soubor):
         reader = csv.reader(f)
         return [row[0] for row in reader if row]
 
-def uloz_do_xlsx(radek, odpoved):
+def uloz_do_json(radek, odpoved):
     cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if os.path.exists(XLSX_FILE):
-        wb = load_workbook(XLSX_FILE)
-        ws = wb.active
+    zaznam = {"radek": radek, "odpoved": odpoved, "cas": cas}
+    
+    if os.path.exists(JSON_FILE):
+        with open(JSON_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
     else:
-        wb = Workbook()
-        ws = wb.active
-        ws.append(["Původní text", "Odpověď", "Čas"])
-    ws.append([radek, odpoved, cas])
-    wb.save(XLSX_FILE)
+        data = []
+
+    data.append(zaznam)
+
+    with open(JSON_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    
     return cas
 
 def nacti_poslednich_20():
-    if not os.path.exists(XLSX_FILE):
+    if not os.path.exists(JSON_FILE):
         return []
-    wb = load_workbook(XLSX_FILE)
-    ws = wb.active
-    zaznamy = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        if len(row) < 3:
-            continue
-        radek, odpoved, cas = row[:3]
-        if radek and odpoved and cas:
-            zaznamy.append(f"[{cas}] {radek} → {odpoved}")
-    return list(reversed(zaznamy[-20:]))
+    with open(JSON_FILE, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    return list(reversed([f"[{z['cas']}] {z['radek']} → {z['odpoved']}" for z in data[-20:]]))
 
 def odesli_email(radek, odpoved, cas, fotka=None):
     msg = MIMEMultipart()
@@ -89,6 +86,7 @@ def spojova_app(key_prefix="spojova"):
     vybrany_radek = st.selectbox("Vyber položku", radky, key=f"{key_prefix}_radek")
     vybrane_jmeno = st.selectbox("Vyber jméno", jmena, key=f"{key_prefix}_jmeno")
     popis = st.text_area("Popis / poznámka", key=f"{key_prefix}_popis")
+
     fotka = st.file_uploader("Přiložit fotku (volitelné)", type=["png", "jpg", "jpeg"], key=f"{key_prefix}_fotka")
 
     if st.button("Odeslat hlášení", key=f"{key_prefix}_odeslat"):
@@ -97,16 +95,17 @@ def spojova_app(key_prefix="spojova"):
         else:
             odpoved = f"{vybrane_jmeno} → {popis.strip()}"
             try:
-                cas = uloz_do_xlsx(vybrany_radek, odpoved)
+                # uložíme do JSON
+                cas = uloz_do_json(vybrany_radek, odpoved)
+                
+                # pošleme email s volitelnou fotkou
                 odesli_email(vybrany_radek, odpoved, cas, fotka=fotka)
+                
                 st.success(f"Hlášení bylo uloženo a odesláno ({cas})")
-
-                # Reset uploader a text area po odeslání
-                st.experimental_rerun()
             except Exception as e:
                 st.error(f"Nastala chyba: {e}")
 
-    st.subheader("Posledních 20 hlášení")
+    # Posledních 20 hlášení
     historie = nacti_poslednich_20()
     for z in historie:
-        st.write(z)  # write místo text pro lepší zalamování
+        st.text(z)
