@@ -89,3 +89,12 @@ def strojni_app(key_prefix="strojni"):
                 st.success(f"Hlášení bylo uloženo a odesláno ({cas})")
             except Exception as e:
                 st.error(f"Nastala chyba: {e}")
+
+    # Zobrazení posledních 20 hlášení
+    st.markdown("### Posledních 20 hlášení")
+    historie = nacti_poslednich_20()
+    if historie:
+        for z in historie:
+            st.text(z)
+    else:
+        st.text("Žádná hlášení ještě neexistují.")
