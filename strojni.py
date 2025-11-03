@@ -70,7 +70,6 @@ def nacti_poslednich_20():
 
 
 def strojni_app(key_prefix="strojni"):
-    st.subheader("Strojní služba")
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
