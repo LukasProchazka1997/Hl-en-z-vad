@@ -10,7 +10,7 @@ CSV_FILES = {
     "Jména": "jmena.csv"
 }
 
-MANAGER_PASSWORD = "tajneheslo"  # změňte podle potřeby
+MANAGER_PASSWORD = "tajneheslo"  # ← sem dej svoje heslo
 
 # --- Pomocné funkce ---
 def nacti_csv(file_path):
@@ -26,34 +26,43 @@ def uloz_csv(file_path, data):
         for item in data:
             writer.writerow([item])
 
+# --- Hlavní aplikace ---
 def manager_app():
+    st.title("📋 Manager")
+    
+    # --- Autentizace ---
     if "manager_auth" not in st.session_state:
         st.session_state.manager_auth = False
 
-    # --- Login ---
     if not st.session_state.manager_auth:
-        login_container = st.empty()
-        with login_container:
-            heslo = st.text_input("Zadejte heslo pro Managera", type="password")
-            if st.button("Potvrdit"):
+        st.info("Pro přístup do managera zadej heslo.")
+        with st.form("login_form", clear_on_submit=True):
+            heslo = st.text_input("Zadejte heslo", type="password")
+            odeslat = st.form_submit_button("Přihlásit se")
+
+            if odeslat:
                 if heslo == MANAGER_PASSWORD:
                     st.session_state.manager_auth = True
-                    st.success("Přihlášení úspěšné!")
-                    login_container.empty()  # skryje login form
+                    st.success("✅ Přihlášení úspěšné!")
+                    st.rerun()  # bezpečné přenačtení rozhraní
                 else:
-                    st.error("Špatné heslo")
-        return  # dokud není přihlášeno, nepokračujeme
+                    st.error("❌ Špatné heslo")
+        return
 
-    # --- Zobrazení pro správu CSV ---
-    st.write("### Správa položek")
+    # --- Po přihlášení ---
+    st.success("Přihlášen jako správce")
+    if st.button("Odhlásit se"):
+        st.session_state.manager_auth = False
+        st.rerun()
 
+    st.write("---")
+
+    # --- Správa CSV ---
     for service, file_path in CSV_FILES.items():
-        st.write(f"#### {service}")
-
+        st.subheader(service)
         data = nacti_csv(file_path)
         upravene = data.copy()
 
-        # Posouvání položek
         for i, item in enumerate(data):
             cols = st.columns([0.7, 0.15, 0.15])
             with cols[0]:
@@ -65,11 +74,10 @@ def manager_app():
                 if st.button("↓", key=f"{service}_down_{i}") and i < len(upravene) - 1:
                     upravene[i], upravene[i+1] = upravene[i+1], upravene[i]
 
-        # Přidání nové položky
         nova = st.text_input("Přidat novou položku", key=f"{service}_nova")
-        if st.button("Uložit změny", key=f"{service}_save"):
+        if st.button("💾 Uložit změny", key=f"{service}_save"):
             if nova.strip():
                 upravene.append(nova.strip())
             uloz_csv(file_path, upravene)
             st.success(f"Položky pro {service} byly uloženy.")
-            st.experimental_rerun = lambda: None  # dummy, aby kód fungoval v starších verzích
+            st.rerun()
