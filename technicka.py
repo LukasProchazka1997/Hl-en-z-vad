@@ -11,7 +11,7 @@ from email import encoders
 
 CSV_FILE = "technicka.csv"
 JMENA_FILE = "jmena.csv"
-XLSX_FILE = "vystupsts.xlsx"
+XLSX_FILE = "vystupsts.csv"
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
