@@ -3,4 +3,4 @@ pandas
 numpy
 openpyxl
 matplotlib
-
+streamlit-sortable
