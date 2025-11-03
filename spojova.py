@@ -1,6 +1,8 @@
+# spojova.py
 import streamlit as st
 import csv
 from datetime import datetime
+from openpyxl import Workbook, load_workbook
 import os
 import smtplib
 from email.mime.text import MIMEText
@@ -22,48 +24,49 @@ def nacti_csv(soubor):
         reader = csv.reader(f)
         return [row[0] for row in reader if row]
 
-def spojova_app():
-    st.write("### Hlášení pro Spojovou službu")
+def uloz_do_xlsx(radek, odpoved):
+    cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    if os.path.exists(XLSX_FILE):
+        wb = load_workbook(XLSX_FILE)
+        ws = wb.active
+    else:
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Původní text", "Odpověď", "Čas"])
+    ws.append([radek, odpoved, cas])
+    wb.save(XLSX_FILE)
+    return cas
 
+def odesli_email(radek, odpoved, cas):
+    predmet = f"Hlášení k: {radek}"
+    text = f"Původní text: {radek}\nOdpověď: {odpoved}\nČas: {cas}"
+    msg = MIMEText(text, "plain", "utf-8")
+    msg["Subject"] = predmet
+    msg["From"] = EMAIL_USER
+    msg["To"] = EMAIL_TO
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.starttls()
+        server.login(EMAIL_USER, EMAIL_PASS)
+        server.send_message(msg)
+
+def spojova_app(key_prefix="spojova"):
+    st.subheader("Spojová služba")
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
-    if not radky:
-        st.warning("Soubor spojova.csv je prázdný nebo neexistuje")
-        return
+    vybrany_radek = st.selectbox("Vyber položku", radky, key=f"{key_prefix}_radek")
+    vybrane_jmeno = st.selectbox("Vyber jméno", jmena, key=f"{key_prefix}_jmeno")
+    popis = st.text_area("Popis / poznámka", key=f"{key_prefix}_popis")
 
-    vybrany_radek = st.selectbox("Vyber položku", radky)
-    vybrane_jmeno = st.selectbox("Vyber jméno", jmena)
-    popis = st.text_area("Popis / poznámka")
-
-    if st.button("Odeslat"):
-        if not vybrane_jmeno or not popis:
-            st.error("Je potřeba vybrat jméno a napsat popis.")
-            return
-        odpoved = f"{vybrane_jmeno} → {popis}"
-        cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Uložit do XLSX
-        from openpyxl import Workbook, load_workbook
-        if os.path.exists(XLSX_FILE):
-            wb = load_workbook(XLSX_FILE)
-            ws = wb.active
+    if st.button("Odeslat hlášení", key=f"{key_prefix}_odeslat"):
+        if not vybrany_radek or not vybrane_jmeno or not popis.strip():
+            st.error("Vyplňte všechny položky.")
         else:
-            wb = Workbook()
-            ws = wb.active
-            ws.append(["Původní text", "Odpověď", "Čas"])
-        ws.append([vybrany_radek, odpoved, cas])
-        wb.save(XLSX_FILE)
-
-        # Odeslat e-mail
-        try:
-            msg = MIMEText(f"Původní text: {vybrany_radek}\nOdpověď: {odpoved}\nČas: {cas}", "plain", "utf-8")
-            msg["Subject"] = f"Hlášení k: {vybrany_radek}"
-            msg["From"] = EMAIL_USER
-            msg["To"] = EMAIL_TO
-            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-                server.starttls()
-                server.login(EMAIL_USER, EMAIL_PASS)
-                server.send_message(msg)
-            st.success("Hlášení bylo uloženo a odesláno.")
-        except Exception as e:
-            st.error(f"Nastala chyba při odesílání: {e}")
+            odpoved = f"{vybrane_jmeno} → {popis.strip()}"
+            try:
+                cas = uloz_do_xlsx(vybrany_radek, odpoved)
+                odesli_email(vybrany_radek, odpoved, cas)
+                st.success(f"Hlášení bylo uloženo a odesláno ({cas})")
+            except Exception as e:
+                st.error(f"Nastala chyba: {e}")
