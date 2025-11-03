@@ -10,7 +10,7 @@ CSV_FILES = {
     "Jména": "jmena.csv"
 }
 
-MANAGER_PASSWORD = "2"
+MANAGER_PASSWORD = "tajneheslo"  # ← sem dej své heslo
 
 
 # --- Pomocné funkce ---
@@ -31,7 +31,7 @@ def uloz_csv(file_path, data):
 
 # --- Hlavní aplikace ---
 def manager_app():
-    st.title("Manager")
+    st.title("📋 Manager")
 
     # --- Přihlášení ---
     if "manager_auth" not in st.session_state:
@@ -72,7 +72,7 @@ def manager_app():
 
         # Zobraz seznam s ovládacími tlačítky
         for i, item in enumerate(data):
-            cols = st.columns([0.7, 0.15, 0.15])
+            cols = st.columns([0.65, 0.1, 0.1, 0.15])
             with cols[0]:
                 st.text(item)
             with cols[1]:
@@ -87,9 +87,15 @@ def manager_app():
                         data[i + 1], data[i] = data[i], data[i + 1]
                         st.session_state[state_key] = data
                         st.rerun()
+            with cols[3]:
+                if st.button("🗑️", key=f"{service}_del_{i}"):
+                    del data[i]
+                    st.session_state[state_key] = data
+                    st.rerun()
 
-        nova = st.text_input("Přidat novou položku", key=f"{service}_nova")
-        if st.button("Uložit změny", key=f"{service}_save"):
+        st.divider()
+        nova = st.text_input("➕ Přidat novou položku", key=f"{service}_nova")
+        if st.button("💾 Uložit změny", key=f"{service}_save"):
             if nova.strip():
                 data.append(nova.strip())
             uloz_csv(file_path, data)
