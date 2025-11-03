@@ -50,6 +50,25 @@ def odesli_email(radek, odpoved, cas):
         server.login(EMAIL_USER, EMAIL_PASS)
         server.send_message(msg)
 
+def nacti_poslednich_20():
+    if not os.path.exists(XLSX_FILE):
+        return []
+    wb = load_workbook(XLSX_FILE)
+    ws = wb.active
+    zaznamy = []
+
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        # vynech prázdné řádky
+        if not row or not any(row):
+            continue
+        # vezmeme jen první tři hodnoty, zbytek ignorujeme
+        radek, odpoved, cas, *rest = row + (None,)*(3-len(row))
+        if radek and odpoved and cas:
+            zaznamy.append(f"[{cas}] {radek} → {odpoved}")
+
+    return list(reversed(zaznamy[-20:]))
+
+
 def strojni_app(key_prefix="strojni"):
     st.subheader("Strojní služba")
     radky = nacti_csv(CSV_FILE)
