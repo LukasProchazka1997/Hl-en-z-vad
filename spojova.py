@@ -1,8 +1,7 @@
 import streamlit as st
-import csv
 from datetime import datetime
-from openpyxl import Workbook, load_workbook
-import os
+import csv
+import io
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -11,7 +10,6 @@ from email import encoders
 
 CSV_FILE = "spojova.csv"
 JMENA_FILE = "jmena.csv"
-XLSX_FILE = "vystupss.xlsx"
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -23,36 +21,26 @@ EMAIL_TO = "lupc@post.cz"
 # Pomocné funkce
 # --------------------
 def nacti_csv(soubor):
-    if not os.path.exists(soubor):
+    try:
+        with open(soubor, newline='', encoding="utf-8") as f:
+            reader = csv.reader(f)
+            return [row[0] for row in reader if row]
+    except FileNotFoundError:
+        st.warning(f"{soubor} nenalezen, seznam bude prázdný.")
         return []
-    with open(soubor, newline='', encoding="utf-8") as f:
-        reader = csv.reader(f)
-        return [row[0] for row in reader if row]
 
-def uloz_do_xlsx(radek, odpoved):
+def uloz_do_session(radek, odpoved):
     cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    if os.path.exists(XLSX_FILE):
-        wb = load_workbook(XLSX_FILE)
-        ws = wb.active
-    else:
-        wb = Workbook()
-        ws = wb.active
-        ws.append(["Původní text", "Odpověď", "Čas"])
-    ws.append([radek, odpoved, cas])
-    wb.save(XLSX_FILE)
+    zaznam = {"radek": radek, "odpoved": odpoved, "cas": cas}
+    if "hlaseni" not in st.session_state:
+        st.session_state.hlaseni = []
+    st.session_state.hlaseni.append(zaznam)
     return cas
 
 def nacti_poslednich_20():
-    if not os.path.exists(XLSX_FILE):
+    if "hlaseni" not in st.session_state:
         return []
-    wb = load_workbook(XLSX_FILE)
-    ws = wb.active
-    zaznamy = []
-    for row in ws.iter_rows(min_row=2, values_only=True):
-        radek, odpoved, cas = row[:3]
-        if radek and odpoved and cas:
-            zaznamy.append(f"[{cas}] {radek} → {odpoved}")
-    return list(reversed(zaznamy[-20:]))
+    return list(reversed([f"[{z['cas']}] {z['radek']} → {z['odpoved']}" for z in st.session_state.hlaseni[-20:]]))
 
 def odesli_email(radek, odpoved, cas, fotka=None):
     msg = MIMEMultipart()
@@ -60,11 +48,9 @@ def odesli_email(radek, odpoved, cas, fotka=None):
     msg["From"] = EMAIL_USER
     msg["To"] = EMAIL_TO
 
-    # Text emailu
     text = f"Původní text: {radek}\nOdpověď: {odpoved}\nČas: {cas}"
     msg.attach(MIMEText(text, "plain", "utf-8"))
 
-    # Připojení fotky
     if fotka is not None:
         part = MIMEBase('application', "octet-stream")
         part.set_payload(fotka.read())
@@ -77,31 +63,51 @@ def odesli_email(radek, odpoved, cas, fotka=None):
         server.login(EMAIL_USER, EMAIL_PASS)
         server.send_message(msg)
 
+def export_xlsx():
+    import openpyxl
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Původní text", "Odpověď", "Čas"])
+    for z in st.session_state.hlaseni:
+        ws.append([z["radek"], z["odpoved"], z["cas"]])
+    
+    file_stream = io.BytesIO()
+    wb.save(file_stream)
+    file_stream.seek(0)
+    return file_stream
+
 # --------------------
-# Hlavní Streamlit aplikace
+# Streamlit aplikace
 # --------------------
-def spojova_app(key_prefix="spojova"):
+def spojova_app():
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
-    vybrany_radek = st.selectbox("Vyber položku", radky, key=f"{key_prefix}_radek")
-    vybrane_jmeno = st.selectbox("Vyber jméno", jmena, key=f"{key_prefix}_jmeno")
-    popis = st.text_area("Popis / poznámka", key=f"{key_prefix}_popis")
+    vybrany_radek = st.selectbox("Vyber položku", radky)
+    vybrane_jmeno = st.selectbox("Vyber jméno", jmena)
+    popis = st.text_area("Popis / poznámka")
 
-    fotka = st.file_uploader("Přiložit fotku (volitelné)", type=["png", "jpg", "jpeg"], key=f"{key_prefix}_fotka")
+    fotka = st.file_uploader("Přiložit fotku (volitelné)", type=["png", "jpg", "jpeg"])
 
-    if st.button("Odeslat hlášení", key=f"{key_prefix}_odeslat"):
+    if st.button("Odeslat hlášení"):
+        st.write("Tlačítko stisknuto")  # debug
+        st.write(f"Vybraný řádek: {vybrany_radek}")
+        st.write(f"Vybrané jméno: {vybrane_jmeno}")
+        st.write(f"Popis: {popis.strip()}")
+
         if not vybrany_radek or not vybrane_jmeno or not popis.strip():
             st.error("Vyplňte všechny položky.")
         else:
             odpoved = f"{vybrane_jmeno} → {popis.strip()}"
             try:
-                # uložíme do XLSX
-                cas = uloz_do_xlsx(vybrany_radek, odpoved)
-                
-                # pošleme email s volitelnou fotkou
+                # uložíme do session
+                cas = uloz_do_session(vybrany_radek, odpoved)
+
+                # pošleme email
                 odesli_email(vybrany_radek, odpoved, cas, fotka=fotka)
-                
+
                 st.success(f"Hlášení bylo uloženo a odesláno ({cas})")
             except Exception as e:
                 st.error(f"Nastala chyba: {e}")
@@ -110,3 +116,11 @@ def spojova_app(key_prefix="spojova"):
     historie = nacti_poslednich_20()
     for z in historie:
         st.text(z)
+
+    # Export do XLSX
+    if st.button("Exportovat všechna hlášení do XLSX"):
+        xlsx_data = export_xlsx()
+        st.download_button("Stáhnout XLSX", xlsx_data, file_name="vystupss.xlsx")
+
+# Spuštění aplikace
+spojova_app()
