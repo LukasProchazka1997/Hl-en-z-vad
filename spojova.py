@@ -72,7 +72,6 @@ def nacti_poslednich_20():
     return list(reversed(zaznamy[-20:]))
 
 def spojova_app(key_prefix="spojova"):
-    st.subheader("Spojová služba")
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
 
