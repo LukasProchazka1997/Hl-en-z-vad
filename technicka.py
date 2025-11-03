@@ -1,12 +1,13 @@
 import streamlit as st
+import csv
 from datetime import datetime
-import csv, os, smtplib
+import os
+import smtplib
 from email.mime.text import MIMEText
-from openpyxl import Workbook, load_workbook
 
-CSV_FILE = "technicka.csv"
+CSV_FILE = "spojova.csv"
 JMENA_FILE = "jmena.csv"
-XLSX_FILE = "vystupts.xlsx"
+XLSX_FILE = "vystupss.xlsx"
 
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 587
@@ -18,13 +19,18 @@ def nacti_csv(soubor):
     if not os.path.exists(soubor):
         return []
     with open(soubor, newline='', encoding="utf-8") as f:
-        return [row[0] for row in csv.reader(f) if row]
+        reader = csv.reader(f)
+        return [row[0] for row in reader if row]
 
-def technicka_app():
-    st.write("### Hlášení pro Technickou službu")
+def spojova_app():
+    st.write("### Hlášení pro Spojovou službu")
 
     radky = nacti_csv(CSV_FILE)
     jmena = nacti_csv(JMENA_FILE)
+
+    if not radky:
+        st.warning("Soubor spojova.csv je prázdný nebo neexistuje")
+        return
 
     vybrany_radek = st.selectbox("Vyber položku", radky)
     vybrane_jmeno = st.selectbox("Vyber jméno", jmena)
@@ -36,7 +42,8 @@ def technicka_app():
             return
         odpoved = f"{vybrane_jmeno} → {popis}"
         cas = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
+        # Uložit do XLSX
+        from openpyxl import Workbook, load_workbook
         if os.path.exists(XLSX_FILE):
             wb = load_workbook(XLSX_FILE)
             ws = wb.active
@@ -47,6 +54,7 @@ def technicka_app():
         ws.append([vybrany_radek, odpoved, cas])
         wb.save(XLSX_FILE)
 
+        # Odeslat e-mail
         try:
             msg = MIMEText(f"Původní text: {vybrany_radek}\nOdpověď: {odpoved}\nČas: {cas}", "plain", "utf-8")
             msg["Subject"] = f"Hlášení k: {vybrany_radek}"
