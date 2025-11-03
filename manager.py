@@ -10,7 +10,7 @@ CSV_FILES = {
     "Jména": "jmena.csv"
 }
 
-MANAGER_PASSWORD = "tajneheslo"  # ← sem dej své heslo
+MANAGER_PASSWORD = "2"  # ← sem dej své heslo
 
 
 # --- Pomocné funkce ---
@@ -31,7 +31,7 @@ def uloz_csv(file_path, data):
 
 # --- Hlavní aplikace ---
 def manager_app():
-    st.title("📋 Manager")
+    st.title("Manager")
 
     # --- Přihlášení ---
     if "manager_auth" not in st.session_state:
