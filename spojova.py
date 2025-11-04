@@ -11,13 +11,7 @@ from email import encoders
 
 CSV_FILE = "spojova.csv"
 JMENA_FILE = "jmena.csv"
-JSON_FILE = "vystupss.json"
-
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 587
-EMAIL_USER = "vyjezdhhmh@gmail.com"
-EMAIL_PASS = "lzjh kbtc xdkk jaiy"
-EMAIL_TO = "lupc@post.cz"
+JSON_FILE = "
 
 # --------------------
 # Pomocné funkce
